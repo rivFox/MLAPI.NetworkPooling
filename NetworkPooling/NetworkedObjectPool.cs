@@ -1,8 +1,7 @@
 ﻿using MLAPI;
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 namespace MLAPI.NetworkPooling
 {
@@ -26,6 +25,10 @@ namespace MLAPI.NetworkPooling
             UnityEngine.Object.DontDestroyOnLoad(obj.gameObject);
             obj.gameObject.SetActive(false);
             pool.Push(obj);
+#if UNITY_EDITOR
+            if (hideInHierarchy)
+                obj.gameObject.hideFlags = HideFlags.HideInHierarchy;
+#endif
         }
 
         public NetworkedObject GetInstance(bool setActive = true)
@@ -47,14 +50,43 @@ namespace MLAPI.NetworkPooling
             transform.position = position;
             transform.rotation = rotation;
             instance.gameObject.SetActive(true);
+#if UNITY_EDITOR
+            instance.gameObject.hideFlags = HideFlags.None;
+            UnityEditor.EditorApplication.DirtyHierarchyWindowSorting();
+#endif
             return instance;
         }
 
-        internal void ReclaimInstance(NetworkedObject instance)
+        public void ReclaimInstance(NetworkedObject instance)
         {
+#if UNITY_EDITOR
+            if (hideInHierarchy)
+            {
+                instance.gameObject.hideFlags = HideFlags.HideInHierarchy;
+                UnityEditor.EditorApplication.DirtyHierarchyWindowSorting();
+            }
+#endif
             instance.gameObject.SetActive(false);
             pool.Push(instance);
         }
+
+#if UNITY_EDITOR
+        bool hideInHierarchy = false;
+        public void SetHideInHierarchy(bool value)
+        {
+            if (hideInHierarchy == value)
+                return;
+
+            hideInHierarchy = value;
+            foreach (var item in pool.ToList())
+            {
+                if (!item)
+                    continue;
+
+                item.gameObject.hideFlags = hideInHierarchy ? HideFlags.HideInHierarchy : HideFlags.None;
+            }
+        }
+#endif
     }
 }
 
